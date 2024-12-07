@@ -18,6 +18,57 @@ def parse_map(input_map):
     return grid, guard_pos, guard_dir, directions
 
 
+def simulate_guard_with_obstruction(
+    grid, guard_pos, guard_dir, directions, obstruction
+):
+    """Simulates the guard's movement with an added obstruction to detect cycles."""
+    x, y = guard_pos
+    dx, dy = guard_dir
+
+    # Add the obstruction
+    ox, oy = obstruction
+    grid[oy][ox] = "#"
+
+    visited_states = set()
+    while True:
+        state = (x, y, dx, dy)
+        if state in visited_states:
+            # Cycle detected
+            grid[oy][ox] = "."  # Remove obstruction before returning
+            return True
+        visited_states.add(state)
+
+        # Compute the next position
+        next_pos = (x + dx, y + dy)
+        if is_within_bounds(next_pos, grid) and grid[next_pos[1]][next_pos[0]] != "#":
+            # Move forward
+            x, y = next_pos
+        else:
+            # Turn right
+            dx, dy = turn_right((dx, dy), directions)
+
+        # Check if the guard is about to leave the map
+        next_x, next_y = x + dx, y + dy
+        if not is_within_bounds((next_x, next_y), grid):
+            grid[oy][ox] = "."  # Remove obstruction before returning
+            return False
+
+
+def find_valid_obstruction_positions(grid, guard_pos, guard_dir, directions):
+    valid_positions = set()
+
+    for y, row in enumerate(grid):
+        for x, cell in enumerate(row):
+            if cell == "." and (x, y) != guard_pos:
+                # Test this position as an obstruction
+                if simulate_guard_with_obstruction(
+                    grid, guard_pos, guard_dir, directions, (x, y)
+                ):
+                    valid_positions.add((x, y))
+
+    return valid_positions
+
+
 def turn_right(direction, directions):
     order = list(directions.values())
     new_index = (order.index(direction) + 1) % len(order)
@@ -70,13 +121,13 @@ def main():
 
     grid, guard_pos, guard_dir, directions = parse_map(input_map)
 
-    visited_positions = simulate_guard(grid, guard_pos, guard_dir, directions)
+    # visited_positions = simulate_guard(grid, guard_pos, guard_dir, directions)
+    valid_obstructions = find_valid_obstruction_positions(
+        grid, guard_pos, guard_dir, directions
+    )
 
-    # Output results
-    print("Distinct positions visited:", len(visited_positions))
-    print("\nFinal map with visited positions marked:")
-    # print_grid(marked_grid)
-    print(len(visited_positions))
+    # print(len(visited_positions))
+    print(len(valid_obstructions))
 
 
 if __name__ == "__main__":
